@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>우리 아이 재활 놀이터 (Design Ver.)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- p5.js 및 ml5.js 라이브러리 로드 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+  <script src="https://unpkg.com/ml5@0.12.2/dist/ml5.min.js"></script>
+  <!-- 구글 폰트: 귀여운 느낌의 Jua 폰트 -->
+  <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+  
+  <style>
+    /* 전체 레이아웃 스타일링 */
+    body {
+      margin: 0; padding: 0;
+      background: linear-gradient(135deg, #FFF1EB 0%, #ACE0F9 100%); /* 파스텔 톤 배경 */
+      font-family: 'Jua', sans-serif;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+      user-select: none; /* 텍스트 선택 방지 */
+    }
+
+    /* 게임기 본체 프레임 디자인 */
+    #game-wrapper {
+      position: relative; /* 자식 요소(버튼 등)의 기준점이 됨 */
+      background: #ffffff;
+      padding: 15px;
+      border-radius: 30px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+      border: 6px solid #FFD1DC; /* 파스텔 핑크 테두리 */
+      display: flex; flex-direction: column; align-items: center;
+      width: 640px;
+      height: 480px; 
+      justify-content: center;
+      /* 게임 박스 자체가 화면 정중앙에 위치하도록 설정됨 (body flex 영향) */
+    }
+
+    /* 메인 메뉴 화면 */
+    #menu-screen {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: #ffffff;
+      border-radius: 20px;
+      position: absolute;
+      top: 0; left: 0;
+      z-index: 10;
+    }
+
+    h1 { 
+      font-size: 42px; color: #FF6B6B; margin-bottom: 5px; margin-top: 0;
+      text-shadow: 2px 2px 0px #FFD93D;
+    }
+    p { color: #888; font-size: 18px; margin-bottom: 30px; }
+
+    /* 메뉴 버튼 컨테이너 */
+    .btn-container { display: flex; gap: 20px; }
+    
+    /* 게임 선택 버튼 */
+    .game-btn {
+      width: 140px; height: 160px;
+      border: none; border-radius: 20px;
+      cursor: pointer; font-size: 18px; font-weight: bold; color: white;
+      transition: all 0.2s ease;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      box-shadow: 0 6px 0 rgba(0,0,0,0.1);
+      font-family: 'Jua', sans-serif;
+    }
+    .game-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 0 rgba(0,0,0,0.15); }
+    .game-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,0.1); }
+    .game-btn span { font-size: 50px; margin-bottom: 10px; filter: drop-shadow(0 2px 0 rgba(0,0,0,0.1)); }
+
+    #btn-a { background: #FF9F43; } /* 주황: 요리 */
+    #btn-b { background: #48DBFB; } /* 파랑: 리듬 */
+    #btn-c { background: #1DD1A1; } /* 초록: 도형 */
+
+    /* p5.js 캔버스 스타일 */
+    canvas { border-radius: 20px; background-color: #F8F9FA; }
+
+    /* 홈으로 가기 버튼 (수정됨: 게임 상자 기준으로 절대 위치 지정) */
+    #back-btn {
+      position: absolute; /* 게임 상자(#game-wrapper) 기준으로 위치 잡기 */
+      bottom: -80px; /* 상자 아래쪽으로 80px 내림 */
+      left: 50%; /* 가로 중앙 정렬 시작점 */
+      transform: translateX(-50%); /* 정확한 가로 중앙 맞춤 */
+      
+      background: white; 
+      border: 3px solid #FF6B6B; 
+      color: #FF6B6B;
+      padding: 12px 30px; 
+      border-radius: 30px; 
+      cursor: pointer;
+      font-family: 'Jua', sans-serif; 
+      font-size: 20px;
+      display: none; 
+      box-shadow: 0 5px 0 #FFD93D;
+      white-space: nowrap; /* 글자 줄바꿈 방지 */
+      transition: all 0.1s;
+    }
+    
+    /* 버튼 눌림 효과 (중앙 정렬 유지하며 이동) */
+    #back-btn:active { 
+      transform: translateX(-50%) translateY(3px); 
+      box-shadow: none; 
+    }
+    #back-btn:hover { background-color: #FFF5F5; }
+
+    /* 로딩 인디케이터 */
+    #loading-msg {
+      margin-top: 20px; color: #aaa; font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="game-wrapper">
+    <!-- 메인 메뉴 화면 -->
+    <div id="menu-screen">
+      <h1>🎈 우리 아이 재활 놀이터</h1>
+      <p>손을 사용하여 재미있는 놀이를 시작해요!</p>
+      
+      <div class="btn-container">
+        <button class="game-btn" id="btn-a" onclick="startGame('A')">
+          <span>🥪</span>
+          요리사 놀이
+        </button>
+        <button class="game-btn" id="btn-b" onclick="startGame('B')">
+          <span>🎵</span>
+          리듬 터치
+        </button>
+        <button class="game-btn" id="btn-c" onclick="startGame('C')">
+          <span>🧩</span>
+          도형 맞추기
+        </button>
+      </div>
+      <div id="loading-msg">📷 카메라 권한 허용 및 모델 로딩 중...</div>
+    </div>
+
+    <!-- 캔버스 컨테이너 -->
+    <div id="canvas-container"></div>
+    
+    <!-- 홈 버튼 (게임 상자 내부로 이동하여 위치 기준을 잡음) -->
+    <button id="back-btn" onclick="goHome()">🏠 홈으로 돌아가기</button>
+  </div>
+  
+  <script>
+    // --- 전역 변수 설정 ---
+    let gameState = 'MENU';
+    let handpose;
+    let video;
+    let hands = [];
+    let isModelLoaded = false;
+    
+    // 파티클 시스템 (폭죽 효과용)
+    let particles = [];
+    
+    // 게임별 상태 변수
+    // Game A: 요리사
+    let ingredients = [], recipe = [], stepA = 0, holdingA = null;
+    // Game B: 리듬 터치
+    let bubbleB = {}, scoreB = 0;
+    // Game C: 도형 맞추기
+    let shapesC = [], targetsC = [], draggedShapeC = null;
+
+    // --- p5.js 초기화 함수 ---
+    function setup() {
+      // 1. 캔버스 생성
+      let canvas = createCanvas(640, 480);
+      canvas.parent('canvas-container');
+      
+      // 2. 웹캠 캡처 시작
+      video = createCapture(VIDEO);
+      video.size(width, height);
+      video.hide(); // HTML 비디오 요소는 숨김 (캔버스에 그릴 것이므로)
+
+      // 3. ml5.js Handpose 모델 로드
+      handpose = ml5.handpose(video, modelReady);
+      handpose.on('predict', results => {
+        hands = results;
+      });
+      
+      // 텍스트 정렬 기준 설정
+      textAlign(CENTER, CENTER);
+      rectMode(CENTER);
+    }
+
+    function modelReady() {
+      console.log('Handpose Model Loaded!');
+      isModelLoaded = true;
+      const loadingMsg = document.getElementById('loading-msg');
+      if(loadingMsg) loadingMsg.innerText = "✅ 준비 완료! 게임을 선택해주세요.";
+      if(loadingMsg) loadingMsg.style.color = "#2ED573";
+    }
+
+    // --- 메인 드로잉 루프 (초당 약 60회 실행) ---
+    function draw() {
+      // 메뉴 화면일 때는 캔버스 업데이트 중지 (성능 절약)
+      if (gameState === 'MENU') return;
+
+      // 1. 배경 그리기 (카메라 화면)
+      push();
+      translate(width, 0); // 좌우 반전 (거울 모드)
+      scale(-1, 1);
+      // 화면을 약간 투명하게, 그리고 밝게 처리 (뽀샤시 효과)
+      tint(255, 255); 
+      image(video, 0, 0, width, height);
+      
+      // 흰색 오버레이를 씌워 UI 가시성 확보
+      fill(255, 255, 255, 60); 
+      noStroke(); 
+      rect(width/2, height/2, width, height);
+      pop();
+
+      // 2. 선택된 게임 로직 실행
+      if (gameState === 'A') drawGameA();
+      else if (gameState === 'B') drawGameB();
+      else if (gameState === 'C') drawGameC();
+
+      // 3. 공통 효과: 파티클(폭죽) 업데이트
+      updateParticles();
+      
+      // 4. 공통 효과: 네온 스타일 손 그리기
+      drawCoolHand();
+    }
+
+    // --- 시각 효과 함수들 ---
+    
+    // 손 뼈대를 예쁜 네온 스타일로 시각화
+    function drawCoolHand() {
+      if (hands.length > 0) {
+        let hand = hands[0];
+        let landmarks = hand.landmarks;
+        
+        // 손가락 연결선 그리기
+        stroke(0, 255, 255, 180); // 형광 하늘색
+        strokeWeight(4);
+        noFill();
+        
+        // MediaPipe 손가락 인덱스 구조
+        let fingers = [
+          [0,1,2,3,4], // 엄지
+          [0,5,6,7,8], // 검지
+          [0,9,10,11,12], // 중지
+          [0,13,14,15,16], // 약지
+          [0,17,18,19,20] // 소지
+        ];
+        
+        for (let f of fingers) {
+          beginShape();
+          for (let idx of f) {
+            let [x, y] = landmarks[idx];
+            // 거울 모드 좌표 변환
+            vertex(width - x, y); 
+          }
+          endShape();
+        }
+
+        // 관절마다 빛나는 점 그리기
+        noStroke();
+        fill(255);
+        for (let pt of landmarks) {
+          ellipse(width - pt[0], pt[1], 8);
+        }
+        
+        // 검지 손가락 끝(8번) 강조 (상호작용 포인트)
+        let tip = landmarks[8];
+        // 반투명한 붉은 원 (히트박스 가이드)
+        fill(255, 0, 100, 150); 
+        ellipse(width - tip[0], tip[1], 20);
+        // 외곽선
+        noFill(); stroke(255, 0, 100); strokeWeight(2);
+        ellipse(width - tip[0], tip[1], 30);
+      }
+    }
+
+    // 파티클(폭죽) 생성 함수
+    function spawnConfetti(x, y) {
+      for(let i=0; i<20; i++) {
+        particles.push({
+          x: x, y: y,
+          vx: random(-5, 5),
+          vy: random(-5, 5),
+          life: 255,
+          color: [random(100, 255), random(100, 255), random(100, 255)] // 랜덤 파스텔 컬러
+        });
+      }
+    }
+
+    // 파티클 업데이트 및 그리기
+    function updateParticles() {
+      for(let i = particles.length-1; i>=0; i--) {
+        let p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 8; // 투명도 감소
+        
+        noStroke();
+        fill(p.color[0], p.color[1], p.color[2], p.life);
+        ellipse(p.x, p.y, 8);
+        
+        if(p.life <= 0) particles.splice(i, 1);
+      }
+    }
+
+    // --- 게임 제어 및 상태 관리 ---
+    function startGame(type) {
+      if(!isModelLoaded) {
+        alert("카메라와 AI 모델을 로딩 중입니다. 잠시만 기다려주세요!");
+        return;
+      }
+      
+      gameState = type;
+      document.getElementById('menu-screen').style.display = 'none';
+      document.getElementById('back-btn').style.display = 'block';
+
+      // 각 게임 초기화
+      if (type === 'A') initGameA();
+      if (type === 'B') initGameB();
+      if (type === 'C') initGameC();
+    }
+
+    function goHome() {
+      gameState = 'MENU';
+      document.getElementById('menu-screen').style.display = 'flex';
+      document.getElementById('back-btn').style.display = 'none';
+    }
+
+    // ==========================================
+    // 🥪 GAME A: 요리사 (순차적 수행)
+    // ==========================================
+    function initGameA() {
+      stepA = 0; holdingA = null;
+      // 재료 데이터 (이모지 활용)
+      ingredients = [
+        {name: "식빵", icon: "🍞", color: "#F8C291", x: 530, y: 100, step: 0, placed: false},
+        {name: "햄", icon: "🍖", color: "#FF6B81", x: 530, y: 200, step: 1, placed: false},
+        {name: "치즈", icon: "🧀", color: "#F6E58D", x: 530, y: 300, step: 2, placed: false},
+        {name: "식빵", icon: "🍞", color: "#F8C291", x: 450, y: 150, step: 3, placed: false}
+      ];
+    }
+
+    function drawGameA() {
+      // 접시 그리기
+      noStroke(); fill(0, 0, 0, 30); ellipse(200, 360, 220, 60); // 그림자
+      fill(255); ellipse(200, 350, 220, 60); // 접시 본체
+      stroke(220); strokeWeight(2); ellipse(200, 350, 180, 40); // 접시 안쪽
+
+      // 가이드 텍스트
+      textSize(22); fill(80); noStroke();
+      if(stepA < 4) {
+        text("👇 순서대로 재료를 접시에 옮겨주세요!", width/2, 40);
+        // 현재 필요한 재료 힌트
+        let currentItem = ingredients.find(i => i.step === stepA);
+        if(currentItem) {
+          textSize(30); fill("#FF6B6B"); 
+          text("필요한 재료: " + currentItem.icon, width/2, 80);
+        }
+      } else {
+        textSize(50); fill("#2ED573"); 
+        text("✨ 샌드위치 완성! 🥪 ✨", width/2, height/2);
+      }
+
+      // 재료 그리기
+      textSize(50);
+      for (let item of ingredients) {
+        if (item.placed) {
+          // 접시 위에 놓인 상태
+          text(item.icon, 200, 350 - (item.step * 20) - 10);
+        } else {
+          // 아직 선택되지 않은 재료 (배경 박스 + 이모지)
+          fill(255, 255, 255, 200); 
+          stroke(item.color); strokeWeight(3);
+          rect(item.x, item.y, 70, 70, 15);
+          noStroke(); 
+          text(item.icon, item.x, item.y + 5);
+        }
+      }
+
+      // 인터랙션 로직
+      if (hands.length > 0 && stepA < 4) {
+        let index = hands[0].landmarks[8];
+        let fx = width - index[0], fy = index[1];
+        
+        if (holdingA) {
+          // 재료를 잡고 있는 상태: 손 따라다니기
+          textSize(60); text(holdingA.icon, fx, fy - 30);
+          
+          // 접시 근처에 오면 놓기 (Drop)
+          if (dist(fx, fy, 200, 350) < 80) {
+            holdingA.placed = true; 
+            holdingA = null; 
+            stepA++;
+            spawnConfetti(200, 350); // 성공 폭죽
+          }
+        } else {
+          // 재료 탐색
+          for (let item of ingredients) {
+            if (!item.placed && dist(fx, fy, item.x, item.y) < 50) {
+              if (item.step === stepA) {
+                holdingA = item; // 순서가 맞으면 잡기
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // ==========================================
+    // 🎵 GAME B: 리듬 터치 (반응 속도)
+    // ==========================================
+    function initGameB() {
+      scoreB = 0; spawnBubbleB();
+    }
+    function spawnBubbleB() {
+      // 전체 영역에서 랜덤 생성 (가장자리 여백 60px 제외)
+      bubbleB = { 
+        x: random(60, width-60), 
+        y: random(100, height-100), 
+        r: 50, 
+        active: true, 
+        scale: 0 
+      };
+    }
+
+    function drawGameB() {
+      // 안내 문구 수정 (전체 화면 대응)
+      noStroke(); fill(100, 180); textSize(20); 
+      text("👉 화면에 나타나는 음표를 터치하세요!", width / 2, 40);
+
+      // 버블 그리기 (등장 애니메이션 포함)
+      if (bubbleB.active) {
+        if(bubbleB.scale < 1) bubbleB.scale += 0.1; // 점점 커짐
+        
+        push();
+        translate(bubbleB.x, bubbleB.y);
+        scale(bubbleB.scale);
+        
+        // 반짝이는 원 배경
+        fill(255, 234, 167); ellipse(0, 0, bubbleB.r*2.2); 
+        fill(253, 203, 110); ellipse(0, 0, bubbleB.r*2);
+        
+        // 음표 아이콘
+        textSize(40); fill(0); text("🎵", 0, 5);
+        pop();
+      }
+
+      // 점수판 디자인
+      fill(255, 255, 255, 230); stroke("#FF7675"); strokeWeight(2);
+      rect(100, 50, 160, 60, 15);
+      fill("#FF7675"); noStroke(); textSize(24);
+      text("Score: " + scoreB, 100, 52);
+
+      // 충돌 감지 로직
+      if (hands.length > 0) {
+        let index = hands[0].landmarks[8]; // 검지 끝
+        let fx = width - index[0], fy = index[1];
+
+        if (bubbleB.active && dist(fx, fy, bubbleB.x, bubbleB.y) < bubbleB.r) {
+          scoreB++; 
+          bubbleB.active = false;
+          spawnConfetti(bubbleB.x, bubbleB.y); // 터짐 효과
+          setTimeout(spawnBubbleB, 600); // 0.6초 뒤 재생성
+        }
+      }
+    }
+
+    // ==========================================
+    // 🧩 GAME C: 도형 맞추기 (소근육/핀치)
+    // ==========================================
+    function initGameC() {
+      draggedShapeC = null;
+      // 왼쪽: 이동할 도형들 (x 좌표 150)
+      shapesC = [
+        {type:'rect', x:150, y:150, w:60, c:'#FF7675', icon:'🟥', matched:false},
+        {type:'circle', x:150, y:300, w:60, c:'#74B9FF', icon:'🔵', matched:false}
+      ];
+      // 오른쪽: 타겟 구멍 (x 좌표 500)
+      targetsC = [
+        {type:'rect', x:500, y:150, w:80, c:'#FAB1A0'},
+        {type:'circle', x:500, y:300, w:80, c:'#81ECEC'}
+      ];
+    }
+
+    function drawGameC() {
+      // 1. 타겟 구멍 그리기 (오른쪽)
+      // 점선 효과 구현을 위해 drawingContext 사용 가능하나 p5 기본 기능으로 대체
+      strokeWeight(4); noFill();
+      for(let t of targetsC) {
+        stroke(t.c);
+        // 점선 느낌을 주기 위해 여러개의 작은 선으로 그릴 수도 있지만 단순화
+        if(t.type==='rect') rect(t.x, t.y, t.w, t.w, 10);
+        else ellipse(t.x, t.y, t.w);
+      }
+      fill(100); noStroke(); textSize(18); text("도형을 집어서(Pinch) 같은 모양에 넣으세요", width/2, 40);
+
+      // 2. 이동할 도형 그리기 (왼쪽)
+      for(let s of shapesC) {
+        if(s.matched) continue;
+        
+        // 그림자
+        noStroke(); fill(0,0,0,30);
+        if(s.type==='rect') rect(s.x+5, s.y+5, 60, 60, 10);
+        else ellipse(s.x+5, s.y+5, 60);
+
+        // 도형 본체
+        fill(s.c); stroke(255); strokeWeight(2);
+        if(s.type==='rect') rect(s.x, s.y, 60, 60, 10);
+        else ellipse(s.x, s.y, 60);
+      }
+      
+      // 모두 맞췄을 때
+      if(shapesC.every(s=>s.matched)) {
+        textSize(60); fill("#6C5CE7"); 
+        text("참 잘했어요! 🌟", width/2, height/2);
+      }
+
+      // 3. 핀치(Pinch) 인식 및 드래그 로직
+      if (hands.length > 0) {
+        let h = hands[0];
+        let t = h.landmarks[4]; // 엄지
+        let i = h.landmarks[8]; // 검지
+        
+        // 좌표 변환
+        let tx = width - t[0], ty = t[1];
+        let ix = width - i[0], iy = i[1];
+        
+        // 두 손가락 사이의 중심점
+        let mx = (tx+ix)/2, my = (ty+iy)/2;
+        
+        // 거리 계산
+        let d = dist(tx, ty, ix, iy);
+        let isPinching = d < 50; // 50px 이내면 집은 것으로 간주
+
+        // 핀치 상태 시각화
+        if(isPinching) {
+          // 이모티콘 제거하고, 반투명한 원과 선으로 표현
+          fill(50, 205, 50, 200); noStroke(); ellipse(mx, my, 30); // 녹색 점
+          stroke(50, 205, 50, 200); strokeWeight(4); // 녹색 연결선
+          line(tx, ty, ix, iy);
+        } else {
+          // 핀치하려고 할 때 연결선 보여주기 (노란색)
+          stroke(255, 255, 0, 150); strokeWeight(2);
+          line(tx, ty, ix, iy);
+        }
+
+        if (isPinching) {
+          if (draggedShapeC) {
+            // 이미 잡고 있는 물체가 있다면 이동
+            draggedShapeC.x = mx; 
+            draggedShapeC.y = my;
+            
+            // 타겟 확인
+            for(let target of targetsC) {
+              if(target.type === draggedShapeC.type && dist(mx, my, target.x, target.y) < 50) {
+                draggedShapeC.matched = true; 
+                draggedShapeC = null;
+                spawnConfetti(target.x, target.y); // 골인 이펙트
+                break; // *** 수정된 부분: 성공하면 반복문 즉시 종료 ***
+              }
+            }
+          } else {
+            // 새로 잡을 물체 탐색
+            for(let s of shapesC) {
+              if(!s.matched && dist(mx, my, s.x, s.y) < 50) {
+                draggedShapeC = s;
+              }
+            }
+          }
+        } else {
+          // 핀치를 풀면 놓기
+          draggedShapeC = null;
+        }
+      }
+    }
+  </script>
+</body>
+</html>
