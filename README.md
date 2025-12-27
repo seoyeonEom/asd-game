@@ -1,5 +1,5 @@
-# 자폐 스펙트럼 장애(ASD) 아동을 위한 디지털 재활 놀이터
-> **"병원 밖에서도 멈추지 않는 우리 아이의 성장"** > 핸드트래킹(Hand-Tracking) 기술을 활용한 웹 기반 원격 재활 게임 플랫폼
+# 자폐 스펙트럼 장애(ASD) 아동을 위한 디지털 재활 치료
+핸드트래킹(Hand-Tracking) 기술을 활용한 웹 기반 원격 재활 게임 플랫폼
 
 ## 프로젝트 개요 (Project Overview)
 
@@ -38,7 +38,7 @@
 
 ---
 
-## 🛠 기술 스택 (Tech Stack)
+## 기술 스택 (Tech Stack)
 
 * **Frontend:** HTML5, CSS3, JavaScript
 * **AI & Computer Vision:**
@@ -52,7 +52,7 @@
 
 이 프로그램은 별도의 설치 과정이 필요 없습니다.
 
-1.  **실행:** [text](https://seoyeoneom.github.io/asd-game/)
+1.  **실행:** [우리 아이 재활 놀이터](https://seoyeoneom.github.io/asd-game/)
 2.  **권한 허용:** 브라우저 상단에 "카메라 사용 권한" 요청이 뜨면 [허용]을 클릭합니다.
 3.  **플레이:** 메인 화면에서 원하는 게임(A, B, C)을 선택하여 플레이합니다.
 
